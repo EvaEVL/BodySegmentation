@@ -1,2 +1,2 @@
 # BodySegmentation
-Body Segmentation U-net with ResNet 16 as backbone
+U-net model on pytorch with ResNet 16 as backbone.
