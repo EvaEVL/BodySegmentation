@@ -538,6 +538,33 @@ plot_graphs(num_epoch, history, 'BCELoss')
   ![image](https://user-images.githubusercontent.com/24653067/185366660-26e4740b-7a86-420c-a78b-c5f78f8ddb94.png)
 
 
+# Использование обученное модели
 
-  
+ ``` python
+ 
+ def predict(model, inputs):
+    inputs = torch.unsqueeze(inputs, dim=0)
+    pred = model(inputs.to(device))
+    return torch.squeeze(pred, 0)
+    
+import urllib.request
+image_url = "https://cdn3.whatculture.com/images/2021/08/5e21602b99b1ba27-600x338.jpeg"
+image_name = 'picture.jpg'
+
+urllib.request.urlretrieve(image_url, image_name)
+ 
+image = read_image('./' + image_name)
+
+img_reshaped = image.permute(1, 2, 0)
+
+ima, _ = transform(image, torch.rand((1,1,224,224)))
+pre = predict(model, ima).detach().cpu().permute(1,2,0).numpy()
+
+print_image(img_reshaped.numpy(), pre > 0.5)
+``` 
+![image](https://user-images.githubusercontent.com/24653067/185369091-877d340a-d656-4fa3-9416-a3fa634bd35e.png)
+
+# Заключение
+
+Поведение модели на незнакомых данных показывает не лучшие результаты; в качестве улучшения обобщяющей способности модели следует добавить аугментацию.
 
