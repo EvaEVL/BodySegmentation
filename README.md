@@ -374,3 +374,170 @@ Estimated Total Size (MB): 526.84
 ----------------------------------------------------------------
 ```
 
+# Создание обучающего цикла и метрик оценивания
+
+
+В качестве метрик оценивания работы нейронной сети выбрал iou (intersection over union) и f1 
+
+``` python 
+
+def ioU_metric(predicted, ground_truth, threshold = 0.5, smooth=1):
+    predicted = (predicted > threshold)
+    intersection = (predicted * threshold).sum(dim=(1,2,3))
+    union = predicted.sum(dim=(1,2,3)) + ground_truth.sum(dim=(1,2,3)) - intersection
+    iou =  ((intersection + smooth) / (union + smooth)).mean()
+    return iou.item()
+
+def f1_metric(predicted, ground_truth, threshold = 0.5, smooth=1):
+    predicted = (predicted > threshold)
+    intersection = (predicted * threshold).sum(dim=(1,2,3))
+    union = predicted.sum(dim=(1,2,3)) + ground_truth.sum(dim=(1,2,3)) - intersection
+    f1 = ((2.0 * intersection + smooth) / (smooth + union)).mean()
+    return f1.item()
+
+```
+
+
+Обучеющий цикл
+``` python 
+
+def train_model(model, optimizer, loss, scheduler, num_epoch=1, batch_size=8):
+
+    dataloaders = {
+        'train': train_dl,
+        'val': valid_dl
+    }
+
+    best_loss = 1e9
+    best_model = copy.deepcopy(model.state_dict())
+    
+    history = {'train' : [],
+               'val' : []}
+    
+    iou_metric = { 
+            'train' : [],
+            'val' : []}
+    
+    f1metric = { 
+            'train' : [],
+            'val' : []}
+    
+    epoch_samples = 0
+    m = torch.nn.Sigmoid()
+    
+    for epoch in range(num_epoch):
+        print('Epoch {}/{} \n'.format(epoch + 1, num_epoch))
+        print('-' * 10)
+        time_start = time.time()
+        
+        
+        
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                scheduler.step()
+                model.train()
+            else:
+                model.eval()
+            
+            running_loss = 0.0
+            running_iou = 0.0
+            running_f1 = 0.0
+            
+            
+            for inputs, labels in dataloaders[phase]:#tqdm(dataloaders[phase]):
+                inputs = inputs.to(device)
+                labels = labels.to(float).to(device)
+                
+                optimizer.zero_grad()
+                
+                with torch.set_grad_enabled(phase == 'train'):
+                    #forward
+                    outputs = model(inputs)
+                    loss_value = loss(m(outputs).to(float), labels)
+                    
+                    #backward
+                    if phase == 'train':
+                        loss_value.backward()
+                        optimizer.step()
+                
+                running_loss += loss_value.data.cpu().numpy()
+                running_iou += ioU_metric(outputs, labels)
+                running_f1 += f1_metric(outputs, labels)
+                
+                
+            epoch_loss = running_loss / len(dataloaders[phase])
+            epoch_iou = running_iou / len(dataloaders[phase])
+            epoch_f1 = running_f1 / len(dataloaders[phase])
+            
+            
+            print('{} Loss: {:.8f} '.format(phase, epoch_loss))
+            history[phase].append(epoch_loss)
+            iou_metric[phase].append(epoch_iou)
+            f1metric[phase].append(epoch_f1)
+            
+            
+            if phase == 'val' and best_loss > loss_value.item():
+                best_loss = loss_value.item()
+                best_model = copy.deepcopy(model.state_dict())
+                torch.save(best_model, os.getcwd() + '/weights_best')
+            
+        time_check = time_start - time.time()
+        print('{:.0f}m {:.0f}s'.format(time_check // 60, time_check % 60), flush=True)
+        
+    print('best loss : {}'.format(best_loss))
+    model.load_state_dict(best_model)
+        
+    return model, history, iou_metric, f1metric
+    
+```
+
+# Обучение
+
+``` python 
+
+loss = torch.nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+num_epoch = 100
+
+model, history, iou_metric, f1metric = train_model(model = model, optimizer = optimizer, loss = loss, scheduler = scheduler, num_epoch=num_epoch);
+```
+
+# Визуализация
+
+``` python 
+
+def plot_graphs(num_epoch, history, act):
+    x = np.arange(num_epoch)
+    plt.plot(x, history['train'],label = 'train', )
+    plt.plot(x, history['val'], label = 'validation', )
+    plt.title(f'{act} while training/validation')
+    plt.xlabel('Epoch')
+    plt.ylabel(act)
+    plt.legend()
+    plt.show()
+    return
+
+```
+
+``` python
+plot_graphs(num_epoch, history, 'BCELoss')
+
+ ```
+ ![image](https://user-images.githubusercontent.com/24653067/185366391-dc95b8ff-4f3d-40c5-8eb7-eba00a0aad49.png)
+
+ ```  python
+ plot_graphs(num_epoch,  iou_metric, 'IOU')
+  ``` 
+ ![image](https://user-images.githubusercontent.com/24653067/185366554-6b2efece-e692-4b7f-81d4-0049758106c7.png)
+
+  
+  ``` python
+  plot_graphs(num_epoch,  f1metric, 'F1')
+  ```
+  ![image](https://user-images.githubusercontent.com/24653067/185366660-26e4740b-7a86-420c-a78b-c5f78f8ddb94.png)
+
+
+
+  
+
