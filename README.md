@@ -194,6 +194,7 @@ print('device: ', device)
 model = model.to(device)
 
 summary(model, (3, 224, 224))
+```
 
 ----------------------------------------------------------------
         Layer (type)               Output Shape         Param #
@@ -370,6 +371,5 @@ Forward/backward pass size (MB): 415.73
 Params size (MB): 110.54
 Estimated Total Size (MB): 526.84
 ----------------------------------------------------------------
-```
 
 
