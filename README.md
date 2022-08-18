@@ -1,2 +1,2 @@
 # BodySegmentation
-U-net model on pytorch with ResNet 16 as backbone.
+В этом репозитории находится реализация U-net модели, в основе которой находится Resnet-18.
