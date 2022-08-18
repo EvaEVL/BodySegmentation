@@ -53,4 +53,44 @@ def transform(img1, img2):
     img2 = img2.to(torch.float) / 255
     
     return img1, img2
+    
+data = SegData(data_root, transform)
+BATCH_SIZE = 8
+
+train_data, valid_data = torch.utils.data.random_split(dataset = data, lengths= [1000, len(data) - 1000])
+
+train_dl = DataLoader(
+        train_data,
+        BATCH_SIZE,
+        shuffle=True,
+        drop_last=True,
+        pin_memory=True,
+    )
+
+
+valid_dl = DataLoader(
+        valid_data,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=True,
+    )
 ```
+# Проверка загруженных изображений Dataloader'а
+
+```python
+
+def print_image(img, mask):
+    plt.figure(figsize=(12, 5))
+    plt.subplot(121)
+    plt.imshow(TF.to_pil_image(img))
+    plt.subplot(122)
+    plt.imshow(mask.squeeze(),'gray')
+    plt.show()
+    return
+    
+train_features, train_labels = next(iter(train_dl))
+ra = random.randint(0, 7)
+print(train_features.shape, train_labels.shape)
+```
+![image](https://user-images.githubusercontent.com/24653067/185358659-b527065c-1954-445f-b8c7-5f4f276af8e6.png)
