@@ -91,6 +91,11 @@ def print_image(img, mask):
     
 train_features, train_labels = next(iter(train_dl))
 ra = random.randint(0, 7)
-print(train_features.shape, train_labels.shape)
+print_image(train_features[ra], train_labels[ra])
 ```
 ![image](https://user-images.githubusercontent.com/24653067/185358659-b527065c-1954-445f-b8c7-5f4f276af8e6.png)
+
+На картинке сверху Dataloader передает предобработанные изображения, откуда и появляется зашумление левой картинки. Слева - преобработанное исходное изображение, а справа - маска.
+
+
+
