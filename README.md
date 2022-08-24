@@ -139,28 +139,6 @@ display_image_grid(images_filenames=list(sorted(os.listdir(image_path))), images
 
 Сверху видно, каким выглядит исходное изображение и маска (соответственно, слева и справа).
 
-```python 
-
-def print_image(img, mask):
-    plt.figure(figsize=(12, 5))
-    plt.subplot(121)
-    plt.imshow(TF.to_pil_image(img))
-    plt.subplot(122)
-    plt.imshow(mask.squeeze(),'gray')
-    plt.show()
-    return
-
-
-train_features, train_labels = next(iter(train_dl))
-ra = random.randint(0, 7)
-print(train_features.shape, train_labels.shape)
-print_image(train_features[ra], train_labels[ra])
-```
-
-![image](https://user-images.githubusercontent.com/24653067/186390496-88012d6a-4a2f-4896-a8c5-05541bccb97d.png)
-
-На картинке сверху Dataloader передает предобработанные изображения, откуда и появляется зашумление левой картинки. Слева - преобработанное исходное изображение, а справа - маска.
-
 # Создание U-net модели
 
 ```python
