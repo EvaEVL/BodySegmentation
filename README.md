@@ -572,7 +572,7 @@ else:
 ```
 
 # Визуализация
-
+Всего модель обучалась 220 эпох, но выведем данные о последних 20 эпохах.
 
 
 ``` python 
@@ -594,19 +594,17 @@ def plot_graphs(num_epoch, history, act):
 plot_graphs(num_epoch, history, 'BCELoss')
 
  ```
- ![image](https://user-images.githubusercontent.com/24653067/185366391-dc95b8ff-4f3d-40c5-8eb7-eba00a0aad49.png)
-
+ ![image](https://user-images.githubusercontent.com/24653067/186402424-1f5af3ff-68f5-4cce-a1da-b7f2ed4dea26.png)
+ 
  ```  python
  plot_graphs(num_epoch,  iou_metric, 'IOU')
   ``` 
- ![image](https://user-images.githubusercontent.com/24653067/185366554-6b2efece-e692-4b7f-81d4-0049758106c7.png)
-
+ ![image](https://user-images.githubusercontent.com/24653067/186402460-aa5cddf7-30a5-4d56-997d-2a03a22bd224.png)
   
   ``` python
-  plot_graphs(num_epoch,  f1metric, 'F1')
+  plot_graphs(num_epoch,  f1metric, 'Dice')
   ```
-  ![image](https://user-images.githubusercontent.com/24653067/185366660-26e4740b-7a86-420c-a78b-c5f78f8ddb94.png)
-
+  ![image](https://user-images.githubusercontent.com/24653067/186402756-c865b8e5-f92c-43a4-a353-38aca9e447f9.png)
 
 # Использование обученное модели
 
@@ -642,6 +640,3 @@ print_image(img_reshaped.numpy(), pre > 0.5)
 ![image](https://user-images.githubusercontent.com/24653067/185369091-877d340a-d656-4fa3-9416-a3fa634bd35e.png)
 
 # Заключение
-
-Поведение модели на незнакомых данных показывает не лучшие результаты; в качестве улучшения обобщяющей способности модели следует добавить аугментацию.
-
