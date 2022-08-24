@@ -589,16 +589,15 @@ plot_graphs(num_epoch, history, 'BCELoss')
 
  Сначала протестируем на валидационных изображениях из датасета.
  
- ![image](https://user-images.githubusercontent.com/24653067/186402002-5e16a76f-cb3a-474a-b339-da398967587e.png)
-
- 
  ``` python
  
  
  display_image_grid(images_filenames=list(sorted(os.listdir(image_path))), images_directory=image_path, masks_directory=mask_path, predict_masks=True)
  
  ```
- 
+  ![image](https://user-images.githubusercontent.com/24653067/186402002-5e16a76f-cb3a-474a-b339-da398967587e.png)
+
+
  
  ``` python
     
