@@ -1,5 +1,5 @@
 # BodySegmentation
-Репозиторий хранит реализацию на pytorch U-net модели, в основе которой находится Resnet-18.
+Репозиторий хранит реализацию на pytorch U-net модели, в основе которой Resnet-18.
 
 # Насущное
 У меня появился вопрос, как работает сегментация изображений и как устроена архитектура модели U-net. Чтобы ответить на свои вопросы, я принялся реализовывать модель для сегментации человеческого тела.
@@ -8,6 +8,8 @@
 Для обучения модели был использован [кегловский датасет](https://www.kaggle.com/datasets/tapakah68/segmentation-full-body-mads-dataset).
 
 # Подготовка Dataset & DataLoader
+
+Для увеличения исходного набора данных была добавлена аугментация: горизонтальный поворот, поворот на угол и искажение цветовой палитры изображения.
 
 ```python
 IMAGE_SIZE = (224, 224)
@@ -25,7 +27,7 @@ class SegData(Dataset):
 
     def __len__(self):
         return len(self.img_files)
-
+    
     def __getitem__(self, index):
         image_path = self.img_files[index]
         mask_path  = self.mask_files[index]
@@ -36,14 +38,31 @@ class SegData(Dataset):
             image, mask = self.transform(image, mask)
             
         return image, mask
-
-def transform(img1, img2):
     
+def transform(img1, img2):
+
     params = transforms.RandomResizedCrop.get_params(img1, scale=(0.5, 1.0), ratio=(0.75, 1.33))
     img1 = TF.resized_crop(img1, *params, size=IMAGE_SIZE)
     img2 = TF.resized_crop(img2, *params, size=IMAGE_SIZE)
 
+    # Random horizontal flipping
+    if random.random() >= 0.5:
+
+        img1 = TF.hflip(img1)
+        img2 = TF.hflip(img2)
     
+    # Random rotation
+    if random.random() >= 0.5:
+        angle = random.randint(0, 91)
+        img1 = transforms.functional.rotate(img1, angle)
+        img2 = transforms.functional.rotate(img2, angle)
+        
+    # Randomly change the brightness, contrast, saturation and hue
+    if random.random() >= 0.5:
+        colorJitter = transforms.ColorJitter(brightness = (0.1, 0.8), contrast = (0.1, 0.8), saturation = (0.1, 0.8), hue = (-0.2, 0.2))
+        img1 = colorJitter(img1)
+    
+
     train_transforms = transforms.Compose([
         transforms.ToPILImage(),
         transforms.ToTensor(),
@@ -78,9 +97,48 @@ valid_dl = DataLoader(
         pin_memory=True,
     )
 ```
-# Проверка загруженных изображений Dataloader'а
+# Изображения из датасета
 
 ```python
+
+def display_image_grid(images_filenames, images_directory, masks_directory, predict_masks=False, num_of_images=BATCH_SIZE):
+  cols = 3 if predict_masks else 2
+  rows = num_of_images
+  figure, ax = plt.subplots(nrows=rows, ncols=cols, figsize=(10, 24))
+  random.shuffle(images_filenames)
+
+  for i, image_filename in enumerate(images_filenames):
+    if i >= rows:
+      break
+
+    image = read_image(os.path.join(images_directory, image_filename))
+    mask = read_image(os.path.join(masks_directory, image_filename), mode = io.ImageReadMode(1)).permute(1, 2, 0)
+
+    ax[i, 0].imshow(image.permute(1, 2, 0))
+    ax[i, 1].imshow(mask.squeeze(), 'gray')
+
+    ax[i, 0].set_title("Image")
+    ax[i, 1].set_title("Ground truth mask")
+
+    ax[i, 0].set_axis_off()
+    ax[i, 1].set_axis_off()
+  
+    if predict_masks:
+      ima, _ = val_transform(image, torch.rand((1,1,224,224)))
+      predicted_mask = predict(model, ima).detach().cpu().permute(1,2,0).numpy() > 0.5
+      ax[i, 2].imshow(predicted_mask.squeeze(), 'gray')
+      ax[i, 2].set_title("Predicted mask")
+      ax[i, 2].set_axis_off()
+
+  plt.tight_layout()
+  plt.show()
+
+display_image_grid(images_filenames=list(sorted(os.listdir(image_path))), images_directory=image_path, masks_directory=mask_path, num_of_images=4)
+```
+![image](https://user-images.githubusercontent.com/24653067/186390044-650e4788-4f36-42cc-a79f-820c85089e02.png)
+На изображении сверху видно, каким выглядит исходное изображение и маска (соответственно, слева и справа).
+
+```python 
 
 def print_image(img, mask):
     plt.figure(figsize=(12, 5))
@@ -90,12 +148,15 @@ def print_image(img, mask):
     plt.imshow(mask.squeeze(),'gray')
     plt.show()
     return
-    
+
+
 train_features, train_labels = next(iter(train_dl))
 ra = random.randint(0, 7)
+print(train_features.shape, train_labels.shape)
 print_image(train_features[ra], train_labels[ra])
 ```
-![image](https://user-images.githubusercontent.com/24653067/185358659-b527065c-1954-445f-b8c7-5f4f276af8e6.png)
+
+![image](https://user-images.githubusercontent.com/24653067/186390496-88012d6a-4a2f-4896-a8c5-05541bccb97d.png)
 
 На картинке сверху Dataloader передает предобработанные изображения, откуда и появляется зашумление левой картинки. Слева - преобработанное исходное изображение, а справа - маска.
 
@@ -377,9 +438,12 @@ Estimated Total Size (MB): 526.84
 ```
 
 # Создание обучающего цикла и метрик оценивания
+Для оценивания качества работы модели были выбраны две матрики:
+1) [IoU(intersection over union)](https://en.wikipedia.org/wiki/Jaccard_index) - число от 0 до 1, показывающее, насколько у двух объектов (эталонного (ground true) и текущего) совпадает внутренность.
+2)[Dice coefficient](https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient) - величина, показывающая схожесть двух множеств.
 
 
-В качестве метрик оценивания работы нейронной сети выбрал iou (intersection over union) и f1 
+
 
 ``` python 
 
@@ -390,17 +454,17 @@ def ioU_metric(predicted, ground_truth, threshold = 0.5, smooth=1):
     iou =  ((intersection + smooth) / (union + smooth)).mean()
     return iou.item()
 
-def f1_metric(predicted, ground_truth, threshold = 0.5, smooth=1):
+def dice_coefficient_metric(predicted, ground_truth, threshold = 0.5, smooth=1):
     predicted = (predicted > threshold)
     intersection = (predicted * threshold).sum(dim=(1,2,3))
     union = predicted.sum(dim=(1,2,3)) + ground_truth.sum(dim=(1,2,3)) - intersection
     f1 = ((2.0 * intersection + smooth) / (smooth + union)).mean()
     return f1.item()
-
 ```
 
 
 Обучеющий цикл
+
 ``` python 
 
 def train_model(model, optimizer, loss, scheduler, num_epoch=1, batch_size=8):
@@ -494,18 +558,21 @@ def train_model(model, optimizer, loss, scheduler, num_epoch=1, batch_size=8):
 ```
 
 # Обучение
+В нашей задачи стоит вопрос соотнесения пикселя к классу тела человека, поэтому в качетсве функции потерь использовалась [бинарная кроссэнтропия](https://en.wikipedia.org/wiki/Cross_entropy). В качестве был взят adam, затухание обучающего коэффициента в 10 раз происходит каждые 5 эпох.
 
 ``` python 
 
-loss = torch.nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-num_epoch = 100
-
-model, history, iou_metric, f1metric = train_model(model = model, optimizer = optimizer, loss = loss, scheduler = scheduler, num_epoch=num_epoch);
+pretrained = True
+weights_path = "/content/drive/MyDrive/weights_best_colab"
+if pretrained:
+  model.load_state_dict(torch.load(weights_path, map_location=device))  
+else:
+  model, history, iou_metric, f1metric = train_model(model = model, optimizer = optimizer, loss = loss, scheduler = scheduler, num_epoch=num_epoch);
 ```
 
 # Визуализация
+
+
 
 ``` python 
 
