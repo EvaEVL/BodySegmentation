@@ -441,6 +441,7 @@ Estimated Total Size (MB): 526.84
 # Создание обучающего цикла и метрик оценивания
 Для оценивания качества работы модели были выбраны две матрики:
 1) [IoU(intersection over union)](https://en.wikipedia.org/wiki/Jaccard_index) - число от 0 до 1, показывающее, насколько у двух объектов (эталонного (ground true) и текущего) совпадает внутренность.
+
 2)[Dice coefficient](https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient) - величина, показывающая схожесть двух множеств.
 
 
