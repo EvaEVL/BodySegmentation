@@ -465,7 +465,7 @@ def dice_coefficient_metric(predicted, ground_truth, threshold = 0.5, smooth=1):
 ```
 
 
-Обучеющий цикл
+# Обучающий цикл
 
 ``` python 
 
